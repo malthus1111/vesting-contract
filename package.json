@@ -1,0 +1,28 @@
+{
+  "name": "vesting-contract",
+  "version": "1.0.0",
+  "description": "## Description Ce dépôt contient le smart contract de Vesting destiné à distribuer des tokens FA2 sur une période définie. Ce contrat permet de gérer une période de gel durant laquelle les fonds ne peuvent pas être réclamés, suivie d'une période de vesting pendant laquelle les fonds sont libérés progressivement.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/malthus1111/vesting-contract.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/malthus1111/vesting-contract/issues"
+  },
+  "homepage": "https://github.com/malthus1111/vesting-contract#readme",
+  "dependencies": {
+    "@taquito/signer": "^19.2.0",
+    "@taquito/taquito": "^19.2.0"
+  }
+}

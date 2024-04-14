@@ -1,0 +1,110 @@
+#include "../src/vesting.mligo"
+#include "ligo_unit_test.mligo"
+
+let admin_address = ("tz1-admin-address" : address)
+let beneficiary_address = ("tz1-beneficiary-address" : address)
+
+let initial_storage : storage = {
+  admin = admin_address;
+  start_time = None;
+  end_time = None;
+  freeze_period = 100n; // période de gel
+  vesting_period = 300n; // période de vesting
+  beneficiaries = Map.literal [
+    (beneficiary_address, {address = beneficiary_address; amount = 1000n})
+  ];
+  token_address = ("tz1-token-address" : address);
+  token_id = 0n;
+}
+
+let test_unauthorized_start () : bool =
+  let unauthorized_storage = start ((), {initial_storage with admin = ("tz1-unauthorized" : address)}) in
+  match unauthorized_storage with
+  | exception Failure -> true
+  | _ -> false
+
+let test_start_vesting () : bool =
+  let updated_storage = start ((), initial_storage) in
+  match updated_storage.start_time with
+  | Some _ -> true
+  | None -> false
+
+let test_double_start_vesting () : bool =
+  let started_storage = start ((), initial_storage) in
+  let double_started_storage = start ((), started_storage) in
+  match double_started_storage with
+  | exception Failure -> true
+  | _ -> false
+
+let test_claim_before_vesting_starts () : bool =
+  let storage_with_time_set = {initial_storage with start_time = Some (Tezos.now + 200n)} in
+  let result = claim ((), storage_with_time_set) in
+  match result with
+  | exception Failure -> true
+  | _ -> false
+
+let test_claim_during_vesting () : bool =
+  let started_storage = start ((), initial_storage) in
+  Tezos.now := started_storage.start_time + (started_storage.vesting_period / 2n);
+  let half_claimable_storage = claim ((), started_storage) in
+  match Map.find_opt beneficiary_address half_claimable_storage.beneficiaries with
+  | Some info when info.claimed > 0n -> true
+  | _ -> false
+
+let test_claim_after_vesting_ends () : bool =
+  let started_storage = start ((), initial_storage) in
+  Tezos.now := started_storage.end_time;
+  let full_claimable_storage = claim ((), started_storage) in
+  match Map.find_opt beneficiary_address full_claimable_storage.beneficiaries with
+  | Some info when info.claimed = info.amount -> true
+  | _ -> false
+
+let test_start_with_funds_transfer () : bool =
+  let updated_storage, ops = start ((), initial_storage) in
+  match ops with
+  | [op] -> (match op with Tezos.transaction _ -> true | _ -> false)
+  | _ -> false
+
+let test_update_beneficiary_before_start () : bool =
+  let new_beneficiary = {address = beneficiary_address; amount = 1500n; claimed = 0n} in
+  let updated_storage = update_beneficiary (beneficiary_address, new_beneficiary) initial_storage in
+  match Map.find_opt beneficiary_address updated_storage.beneficiaries with
+  | Some info when info.amount = 1500n -> true
+  | _ -> false
+
+let test_update_beneficiary_after_start () : bool =
+  let started_storage = start ((), initial_storage) in
+  let new_beneficiary = {address = beneficiary_address; amount = 1500n; claimed = 0n} in
+  let result = update_beneficiary (beneficiary_address, new_beneficiary) started_storage in
+  match result with
+  | exception Failure -> true
+  | _ -> false
+
+let test_kill_contract () : bool =
+  let started_storage = start ((), initial_storage) in
+  Tezos.now := started_storage.start_time + (started_storage.vesting_period / 2n);
+  let killed_storage, ops = kill ((), started_storage) in
+  let correct_ops = List.length ops = 1 && 
+  match Map.find_opt beneficiary_address killed_storage.beneficiaries with
+  | None -> true 
+  | _ -> false
+
+let test_non_beneficiary_claim () : bool =
+  let non_beneficiary_address = ("tz1-nonbeneficiary" : address) in
+  let non_beneficiary_storage = {initial_storage with admin = admin_address} in
+  let result = claim ((), {non_beneficiary_storage with beneficiaries = Map.empty}) in
+  match result with
+  | exception Failure -> true
+  | _ -> false
+
+let run_tests () : bool list =
+  [
+    test_unauthorized_start ();
+    test_start_vesting ();
+    test_double_start_vesting ();
+    test_update_beneficiary_before_start ();
+    test_update_beneficiary_after_start ();
+    test_kill_contract ();  
+  ]
+
+let _ = List.map assert (run_tests ())

@@ -1,0 +1,26 @@
+{
+    "compiler": {
+      "path": "ligo",
+      "version": "next"
+    },
+    "contracts": {
+      "main": "src/vesting.ligo",
+      "output": "compiled/vesting.tz"
+    },
+    "scripts": {
+      "build": "ligo compile-contract --michelson-format=json $CONTRACTS_MAIN $ENTRYPOINT > $CONTRACTS_OUTPUT",
+      "test": "ligo run test src/tests.ligo",
+      "deploy": "scripts/deploy.sh"
+    },
+    "networks": {
+      "testnet": {
+        "node": "https://testnet-tezos.giganode.io",
+        "key": "tz1..."
+      },
+      "mainnet": {
+      "node": "https://mainnet.api.tez.ie",
+      "key": "tz1..."
+      }
+    }
+  }
+  
